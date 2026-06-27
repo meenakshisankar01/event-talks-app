@@ -39,6 +39,9 @@
                     <span class="status-dot"></span>
                     <span id="last-updated-text" class="status-text">Checking for updates...</span>
                 </div>
+                <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Light/Dark Mode">
+                    <i class="fa-solid fa-moon" id="theme-toggle-icon"></i>
+                </button>
                 <button id="refresh-btn" class="btn btn-primary" title="Refresh Release Notes">
                     <i class="fa-solid fa-arrows-rotate" id="refresh-icon"></i>
                     <span>Refresh</span>
@@ -73,12 +76,17 @@
                     </button>
                 </div>
                 
-                <div class="sort-wrapper">
-                    <label for="sort-select"><i class="fa-solid fa-sort"></i> Sort</label>
-                    <select id="sort-select">
-                        <option value="newest">Newest First</option>
-                        <option value="oldest">Oldest First</option>
-                    </select>
+                <div class="controls-actions">
+                    <button id="export-csv-btn" class="btn btn-secondary" title="Export current filtered list to CSV">
+                        <i class="fa-solid fa-file-csv"></i> Export CSV
+                    </button>
+                    <div class="sort-wrapper">
+                        <label for="sort-select"><i class="fa-solid fa-sort"></i> Sort</label>
+                        <select id="sort-select">
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </section>

@@ -1,5 +1,6 @@
 // State Management
 let releaseNotes = [];
+let filteredReleases = [];
 let activeFilter = 'all';
 let searchQuery = '';
 let sortBy = 'newest';
@@ -34,9 +35,23 @@ const toastMessage = document.getElementById('toast-message');
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
     fetchReleases();
     setupEventListeners();
 });
+
+// Theme Initialization
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    const themeToggleIcon = document.getElementById('theme-toggle-icon');
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-theme');
+        if (themeToggleIcon) themeToggleIcon.className = 'fa-solid fa-sun';
+    } else {
+        document.body.classList.remove('light-theme');
+        if (themeToggleIcon) themeToggleIcon.className = 'fa-solid fa-moon';
+    }
+}
 
 // Event Listeners
 function setupEventListeners() {
@@ -93,6 +108,32 @@ function setupEventListeners() {
     // Modal Action Buttons
     copyTweetBtn.addEventListener('click', copyTweetText);
     sendTweetBtn.addEventListener('click', sendTweetText);
+
+    // Theme toggle
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    const themeToggleIcon = document.getElementById('theme-toggle-icon');
+    if (themeToggleBtn && themeToggleIcon) {
+        themeToggleBtn.addEventListener('click', () => {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            themeToggleIcon.className = isLight ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            
+            // Animation
+            themeToggleIcon.style.transform = 'rotate(360deg)';
+            themeToggleIcon.style.transition = 'transform 0.5s ease';
+            setTimeout(() => {
+                themeToggleIcon.style.transform = '';
+                themeToggleIcon.style.transition = '';
+            }, 500);
+        });
+    }
+
+    // Export CSV
+    const exportCsvBtn = document.getElementById('export-csv-btn');
+    if (exportCsvBtn) {
+        exportCsvBtn.addEventListener('click', exportToCSV);
+    }
 }
 
 // Fetch Release Notes
@@ -205,6 +246,9 @@ function applyFiltersAndSort() {
         return sortBy === 'newest' ? dateB - dateA : dateA - dateB;
     });
     
+    // Save to global filtered releases
+    filteredReleases = filtered;
+    
     // Hide skeleton and render
     skeletonLoader.style.display = 'none';
     renderReleases(filtered);
@@ -274,6 +318,12 @@ function renderReleases(notes) {
         docsBtn.rel = 'noopener noreferrer';
         docsBtn.className = 'btn btn-card-link';
         docsBtn.innerHTML = `<i class="fa-solid fa-arrow-up-right-from-square"></i> Read Docs`;
+
+        const copyCardBtn = document.createElement('button');
+        copyCardBtn.className = 'btn btn-card-link';
+        copyCardBtn.innerHTML = `<i class="fa-regular fa-copy"></i> Copy`;
+        copyCardBtn.title = "Copy release note text to clipboard";
+        copyCardBtn.addEventListener('click', () => copyCardText(note));
         
         const tweetBtn = document.createElement('button');
         tweetBtn.className = 'btn btn-card-tweet';
@@ -281,6 +331,7 @@ function renderReleases(notes) {
         tweetBtn.addEventListener('click', () => openTweetModal(note));
         
         footer.appendChild(docsBtn);
+        footer.appendChild(copyCardBtn);
         footer.appendChild(tweetBtn);
         
         // Append all to card
@@ -431,4 +482,67 @@ function showToast(message, type = 'success') {
     toastTimeout = setTimeout(() => {
         toast.classList.remove('show');
     }, 3000);
+}
+
+// Copy single release note card text to clipboard
+async function copyCardText(note) {
+    const category = note.category || 'Update';
+    const textToCopy = `BigQuery ${category} (${note.date}):\n${note.text}\n\nRead details: ${note.link}`;
+    try {
+        await navigator.clipboard.writeText(textToCopy);
+        showToast('Card text copied to clipboard!');
+    } catch (err) {
+        console.error('Failed to copy card text: ', err);
+        showToast('Failed to copy to clipboard', 'error');
+    }
+}
+
+// Export filtered release notes to CSV
+function exportToCSV() {
+    if (!filteredReleases || filteredReleases.length === 0) {
+        showToast('No data available to export!', 'warning');
+        return;
+    }
+    
+    // Headers
+    const headers = ['Date', 'Category', 'Link', 'Content'];
+    
+    // CSV escaping helper
+    const escapeCSVValue = (val) => {
+        if (val === null || val === undefined) return '';
+        let formatted = val.toString().replace(/"/g, '""');
+        if (formatted.includes(',') || formatted.includes('\n') || formatted.includes('"')) {
+            formatted = `"${formatted}"`;
+        }
+        return formatted;
+    };
+    
+    // Build rows
+    const rows = [headers.join(',')];
+    filteredReleases.forEach(note => {
+        const row = [
+            escapeCSVValue(note.date),
+            escapeCSVValue(note.category),
+            escapeCSVValue(note.link),
+            escapeCSVValue(note.text)
+        ];
+        rows.push(row.join(','));
+    });
+    
+    const csvContent = rows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    
+    const formattedDate = new Date().toISOString().slice(0, 10);
+    link.setAttribute('download', `bigquery_release_notes_${formattedDate}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast('Exported CSV successfully!');
 }
