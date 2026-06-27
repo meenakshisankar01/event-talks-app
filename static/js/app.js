@@ -209,6 +209,9 @@ function resetFilters() {
 
 // Filter and Sort Data
 function applyFiltersAndSort() {
+    // Update badge counts next to tabs
+    updateFilterCounts();
+
     // 1. Filter
     let filtered = releaseNotes.filter(note => {
         // Filter by category tab
@@ -299,7 +302,8 @@ function renderReleases(notes) {
         // Body (renders original HTML structure safe from feed)
         const body = document.createElement('div');
         body.className = 'card-body';
-        body.innerHTML = note.html;
+        // Apply search keyword highlighting if query is active
+        body.innerHTML = searchQuery ? highlightHTML(note.html, searchQuery) : note.html;
         
         // Ensure links in HTML body open in new tab
         const bodyLinks = body.querySelectorAll('a');
@@ -545,4 +549,100 @@ function exportToCSV() {
     document.body.removeChild(link);
     
     showToast('Exported CSV successfully!');
+}
+
+// Dynamically count matches for each category based on current search query
+function updateFilterCounts() {
+    let allCount = 0;
+    let featureCount = 0;
+    let changeCount = 0;
+    let deprecationCount = 0;
+    let otherCount = 0;
+    
+    releaseNotes.forEach(note => {
+        let matchesSearch = true;
+        if (searchQuery) {
+            const dateText = (note.date || '').toLowerCase();
+            const catText = (note.category || 'Update').toLowerCase();
+            const mainText = (note.text || '').toLowerCase();
+            matchesSearch = dateText.includes(searchQuery) || 
+                            catText.includes(searchQuery) || 
+                            mainText.includes(searchQuery);
+        }
+        
+        if (matchesSearch) {
+            allCount++;
+            const category = note.category || 'Update';
+            if (category === 'Feature') {
+                featureCount++;
+            } else if (category === 'Change') {
+                changeCount++;
+            } else if (category === 'Deprecation' || category.toLowerCase().includes('deprecat')) {
+                deprecationCount++;
+            } else {
+                otherCount++;
+            }
+        }
+    });
+    
+    // Update HTML spans
+    const updateSpan = (id, count) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = `(${count})`;
+    };
+    
+    updateSpan('count-all', allCount);
+    updateSpan('count-feature', featureCount);
+    updateSpan('count-change', changeCount);
+    updateSpan('count-deprecation', deprecationCount);
+    updateSpan('count-other', otherCount);
+}
+
+// Safely highlight search query keywords in HTML content without breaking tags
+function highlightHTML(htmlContent, query) {
+    if (!query) return htmlContent;
+    
+    const container = document.createElement('div');
+    container.innerHTML = htmlContent;
+    
+    // Helper to escape RegExp special characters
+    const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
+    
+    // Recursive walker function
+    function walk(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent;
+            const parent = node.parentNode;
+            
+            // Skip script, style, and already marked nodes
+            const skipTags = ['SCRIPT', 'STYLE', 'MARK'];
+            if (parent && skipTags.includes(parent.tagName)) {
+                return;
+            }
+            
+            if (text.toLowerCase().includes(query.toLowerCase())) {
+                const fragment = document.createDocumentFragment();
+                const parts = text.split(regex);
+                parts.forEach(part => {
+                    if (part.toLowerCase() === query.toLowerCase()) {
+                        const mark = document.createElement('mark');
+                        mark.className = 'search-highlight';
+                        mark.textContent = part;
+                        fragment.appendChild(mark);
+                    } else if (part) {
+                        fragment.appendChild(document.createTextNode(part));
+                    }
+                });
+                
+                parent.replaceChild(fragment, node);
+            }
+        } else {
+            const children = Array.from(node.childNodes);
+            children.forEach(child => walk(child));
+        }
+    }
+    
+    walk(container);
+    return container.innerHTML;
 }

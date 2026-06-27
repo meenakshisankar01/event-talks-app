@@ -1159,3 +1159,30 @@ body.light-theme .skeleton-card::after {
     }
 }
 
+/* Filter Tab Count Badges */
+.tab-count {
+    font-size: 0.75rem;
+    opacity: 0.65;
+    margin-left: 0.25rem;
+    font-weight: 500;
+    transition: opacity var(--transition-fast);
+}
+
+.filter-tab.active .tab-count {
+    opacity: 0.9;
+    font-weight: 700;
+}
+
+/* Search Term Highlight Styles */
+mark.search-highlight {
+    background-color: rgba(250, 204, 21, 0.25); /* Transparent Amber/Yellow */
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
+    box-shadow: 0 0 2px rgba(250, 204, 21, 0.1);
+}
+
+body.light-theme mark.search-highlight {
+    background-color: rgba(250, 204, 21, 0.35); /* Slightly darker in light theme */
+}
+
